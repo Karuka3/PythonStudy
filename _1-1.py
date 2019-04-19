@@ -32,6 +32,7 @@ for n in data:
 
 sd = sum((x - mean)**2 for x in data) / N
 
+
 # 答え（下の#を消して答えを入れてください）
 #mean   = 9.0
 #median = 6.0 
@@ -39,3 +40,4 @@ sd = sum((x - mean)**2 for x in data) / N
 #############
 
 print("平均値: %.3f \n中央値: %.3f \n分散  ：%.3f" %(mean, median, sd))
+

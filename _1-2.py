@@ -6,7 +6,7 @@ b = [] # <- b=list()　と同じ
 
 ##コードを入れてください
 for i in range(101):
-    if i % 3 == 0 and i % 4 == 0 and i % 5 != 0:
+    if (i % 3 == 0 or i % 4 == 0) and i % 5 != 0:
         b.append(i)
     else:
         pass
