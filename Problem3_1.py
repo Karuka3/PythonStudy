@@ -15,13 +15,13 @@ def my_readfile(path):
 def preprocessing(text):
 	### Code 文章の\nを全部取る
 	cleaned_text = re.subn(r'\n','',text)[0]
-	
+	#print(cleaned_text)
 	return cleaned_text
 
 def counter(cleaned_text):
 	pattarn = re.compile(r"(?<=\[)\d*(?=\])")
 	distruct = re.findall(pattarn,cleaned_text)
-	print(distruct)
+	#print(distruct)
 	count = len(distruct)
 	return count
 

@@ -23,7 +23,9 @@ def unit_convert_num(i):
 		return 1
 
 def dollar_calculator(text):
-	pattarn = re.compile(r"(?<!CAD)\$([0-9.]*\d)\s*(million|billion|M|-million)*")
+	#pattarn = re.compile(r"(?<!CAD)\$([0-9.]*\d)\s*((million|billion|M|-million)|(?<!CAD))*")
+	pattarn = re.compile(r"(?<!CAD)\$([0-9.]*\d)[\s\-]*([mM]*illion*)(billion)*\s*(?<!CAD)*")
+	
 	_eliminated = re.subn(',','',text)
 	distruct = re.findall(pattarn, _eliminated[0])
 	
