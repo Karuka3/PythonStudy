@@ -23,13 +23,13 @@ def balance_data(x,y,ratio=1,random_seed=1): #<-データのバランスを解�
     ind = tmp1.union(tmp2)   #<- indexのappend
     return x.loc[ind,:], y.loc[ind]
 
-def preprocessing(dat,convert_cols,drop_variables,dependent_variable,convert_to_num,normalization=False,train=0.9,balance=False, ratio= 1, random_seed=1, debug = False):
+def preprocessing(dat,convert_cols,drop_variables,dependent_variable,change_word,normalization=False,train=0.9,balance=False, ratio= 1, random_seed=1, debug = False):
     """
     :param dat                  : 元の行列
     :param convert_cols         : ダミー変数に置き換えたい列名のリスト
     :param drop_variables       : 不要な列名のリスト
     :param dependent_variable   : 目的変数列名
-    :param convert_to_num       : ダミー変数に変換
+    :param change_word       : ダミー変数に変換
     :param normalization        : 標準化するかどうか
     :param train        : トレーニングセットの比率
     :param balance      : バランスデータにするかどうか
@@ -42,9 +42,10 @@ def preprocessing(dat,convert_cols,drop_variables,dependent_variable,convert_to_
     #[Trx,Tx,Try,Ty] = [[],[],[],[]]
 
     #欠損値の削除
-    naomit_data = convert_to_dummy(processing_NA(dat),convert_cols)
+    tmp = processing_NA(dat)
+    naomit_data = convert_to_dummy(tmp,convert_cols)
     #データの目的変数と説明変数に分割
-    [X,Y] = drop_data(naomit_data,drop_variables,dependent_variable,convert_to_num)
+    [X,Y] = drop_data(naomit_data,drop_variables,dependent_variable,change_word)
 
     if normalization:
         X.iloc[:,:] = StandardScaler().fit_transform(X)
@@ -61,7 +62,7 @@ def preprocessing(dat,convert_cols,drop_variables,dependent_variable,convert_to_
     #[Trx, Tx, Try, Ty] = train_test_split(X,Y,test_size=1-train,random_state=random_seed)
 
     if balance:
-        Trx, Try = balance_data(X,Y,ratio,random_seed)
+        Trx, Try = balance_data(Trx,Try,ratio,random_seed)
         if debug:
             print("After balancing")
             print(Try.head())
@@ -102,25 +103,26 @@ def main():
     test = pd.read_csv("adult_test.csv")
     
     #  2.欠損値を抜く
+
     #verify_NA(train)
     
     #  3.カテゴリデータの処理 && 訓練、テストデータの準備
     convert_cols = ["職種","学位","結婚状態","関係","職業","人種","性別","国籍"]
     drop_variables = ["fnlwgt", "income"]
-    dependent_variable = ["income"]
-    change_word = [" >50K."]
-
-    
-    [Trx,a,Try,b] = preprocessing(train,convert_cols,drop_variables,dependent_variable,change_word,True,1,True,1,1,False)
+    dependent_variable = "income"
+    change_word = " >50K."
+    Trx,Tx,Try,Ty = preprocessing(train,convert_cols,drop_variables,dependent_variable,change_word,True,0.9,False,1,1,False)
     #[c,Tx,d,Ty] = preprocessing(test,convert_cols,drop_variables,dependent_variable,change_word,True,0,True,1,1,False)
     
     #  4.提案モデル  #<- logistic? neural network?
     logistic = LogisticRegression()
+    print(Try)
     result = logistic.fit(Trx, Try)
 
     pred = result.predict(Tx)
     cmat = confusion_matrix(Ty, pred)
     print(cmat)
+    
     #   5.モデル評価 #<- accuracy, precision, recall, f1で評価
     evaluation = [accuracy_score,precision_score,recall_score,f1_score]
     evaluation_tag = ["accuracy","precision","recall","f1"]
@@ -134,8 +136,6 @@ def main():
     ## 6.シミュレーションデータでヒートマップ
 
     #
- 
-
 
 if __name__ == "__main__":
     main()
