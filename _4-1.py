@@ -41,8 +41,9 @@ def rmse(y,y_pred):
     rmse = np.sqrt(np.mean((y - y_pred)**2))
     return rmse
 
-def convert_to_dummy_variable(labels):
-    return [1 if x =="True" or x =="good" or x == "female" else 0 for x in labels]
+def convert_to_dummy(label):
+    return [1 if x == True or x == "male" else 0 for x in label]
+
 
 def main():
     dat = pd.read_csv("https://vincentarelbundock.github.io/Rdatasets/csv/Ecdat/DoctorContacts.csv",index_col=0)
@@ -50,10 +51,15 @@ def main():
     print("変換前\n")
     print(dat.head())
 
-    ## データを分割&変換   
-    change_labels = ["idp","physlim","health","sex","child","black"]
+    ## データを分割&変換
+    change_labels = ["idp","physlim","sex","child","black"]
+
     for label in change_labels:
-        dat[label] = convert_to_dummy_variable(dat[label])
+        dat[label] = convert_to_dummy(dat[label])
+
+    print(dat)
+    dat = pd.get_dummies(dat,'health',drop_first=True)
+
 
     print("\n変換後\n")
     print(dat.head())
@@ -66,9 +72,8 @@ def main():
     Xt  = dat.iloc[15000:,1:]
     Yt  = dat.iloc[15000:,0]
 
-
     print(my_model(Xtr,Ytr,Xt,Yt))
 
-    
+
 if __name__ == "__main__":
     main()
