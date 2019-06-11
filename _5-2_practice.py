@@ -11,6 +11,7 @@ from sklearn.metrics import precision_score,recall_score,f1_score,accuracy_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPClassifier
 
+
 def simple_bar(dat,col):  #<-簡単なbarをプロット
     pass
 
@@ -18,6 +19,7 @@ def balance_data(x,y,ratio=1,random_seed=1): #<-データのバランスを解�
     """
     x, yを受け取って、ratioに従いバランスした、 x,yを return
     """
+    np.random.seed(random_seed)
     tmp1 = y.loc[y == 1].index
     tmp2 = y.loc[y == 0].sample(tmp1.shape[0]*ratio).index
     ind = tmp1.union(tmp2)   #<- indexのappend
@@ -79,14 +81,63 @@ def simulation(coln):
     # 教育年数 0-20
 	# 毎週仕事時間 0 - 40
 	# 教育年数 -> 1 , 毎週仕事時間 -> 4 (列番号)
-	simdata = np.zeros((800,coln))
+	simdata = np.zeros((600,coln))
 	count = 0
 	for edu in range(20):
-		for work in range(40):
-			simdata[count, 1] = edu  #<- education
+		for work in range(30):
+			simdata[count, 1] = edu
 			simdata[count, 4] = work
 			count += 1
 	return simdata
+
+def transition(data, column_name):
+    """
+    For exaple: column_name に"結婚状態"といれると"結婚状態"の列番と列名のリストを返す関数
+    """
+    col_num = []
+    for i in range(len(data.columns)):
+        if column_name in data.columns[i]:
+            col_num.append(i)
+
+    labels = data.iloc[:, col_num].columns
+    return col_num, labels
+
+def simulation_dummy(data_num,dummy_1,col_order_num=None,_range=None,dummy_2=None):
+    """
+    もし、ダミー変数と数値データでsimulationデータを生成したい場合、'col_order_num'と'_range'は必須
+    Parameter
+    :data_num: データの総数
+    :dummy_1: カテゴリ変数1
+    :col_order_num : データの列番号
+    :_range: column's range
+    :dummy_2: カテゴリ変数2
+    """
+    count = 0
+    length_dummy1 = len(dummy_1)
+    #dummy変数と数値でのsimdataの生成
+    if dummy_2 == None:
+        print("dummy変数と数値データでのsimulation dataを生成します")
+        if col_order_num == None or _range == None:
+            print("col_order_numもしくは_rangeがNoneです")
+            print("col_order_numもしくは_rangeを設定してください")
+        else:
+            simdata = np.zeros((_range * length_dummy1, data_num))
+            for i in range(_range):
+                for j in range(length_dummy1):
+                    simdata[count, col_order_num] = i
+                    simdata[count, dummy_1[j]] = 1
+                    count += 1
+            return simdata
+    #dummy変数とdummy変数でsimdataの生成
+    else:
+        print("dummy変数とdummy変数でsimulation dataを生成します")
+        simdata = np.zeros((length_dummy1 * len(dummy_2), data_num))
+        for i in range(length_dummy1):
+            for j in range(len(dummy_2)):
+                simdata[count, dummy_1[i]] = 1
+                simdata[count, dummy_2[j]] = 1
+                count += 1
+        return simdata
 
 def main():
     #　１．データを見る
@@ -104,12 +155,12 @@ def main():
 
     #  3.カテゴリデータの処理 && 訓練、テストデータの準備
 
-    Trx,Tx,Try,Ty = preprocessing(data,drop_variables,dependent_variable,change_word,True,0.825,True,3,5,False)
+    Trx,Tx,Try,Ty = preprocessing(data,drop_variables,dependent_variable,change_word,True,0.95,True,3,5,False)
 
     #  4.提案モデル  #<- logistic? neural network?
     logistic = LogisticRegression()
     result = logistic.fit(Trx, Try)
-    #NNT = MLPClassifier(hidden_layer_sizes=(15,7,1))
+    #NNT = MLPClassifier(hidden_layer_sizes=(400,200,100,50,1))
     #result = NNT.fit(Trx,Try)
 
     pred = result.predict(Tx)
@@ -127,14 +178,15 @@ def main():
     print("Scores:\n",scores)
 
     ## 6.シミュレーションデータでヒートマップ
-    simdata =simulation(Trx.shape[1])
+    col_num_list,labels = transition(Trx,"職種")
+    simdata = simulation_dummy(Trx.shape[1],col_num_list,1,20)
     heatmap(simdata)
     plt.show()
-    print("\n\nSimulation data\n",simdata[:,[1,4]])
+    #print("\n\nSimulation data\n",simdata[:,[1,4]])
 
     sim_pred =result.predict_proba(simdata)
     #print(sim_pred[:,1])
-    sim_pred = np.array(sim_pred[:,1]).reshape((20,40))
+    sim_pred = np.array(sim_pred[:,1])
     ax =heatmap(sim_pred)
     ax.invert_yaxis()
     ax.set_title("Probability of income >=50K")
