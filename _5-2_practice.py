@@ -10,16 +10,22 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score,recall_score,f1_score,accuracy_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC,LinearSVC
+from sklearn.model_selection import GridSearchCV
 
 
 def simple_bar(dat,col):  #<-簡単なbarをプロット
-    pass
+    balance = dat[col].value_counts()
+    plt.clf()
+    plt.bar(balance.index, balance)
+    plt.title(col)
+    plt.show()
 
 def balance_data(x,y,ratio=1,random_seed=1): #<-データのバランスを解決
     """
     x, yを受け取って、ratioに従いバランスした、 x,yを return
     """
-    np.random.seed(random_seed)
+
     tmp1 = y.loc[y == 1].index
     tmp2 = y.loc[y == 0].sample(tmp1.shape[0]*ratio).index
     ind = tmp1.union(tmp2)   #<- indexのappend
@@ -53,7 +59,6 @@ def preprocessing(data,drop_variables,dependent_variable,change_word=None,normal
 
     return [Trx, Tx, Try, Ty]
 
-
 def normalized(X,debug):
     X.iloc[:,:] = StandardScaler().fit_transform(X)
     if debug:
@@ -76,20 +81,6 @@ def drop_data(dat,drop_variables,dependent_variable,change_word=None):
         Y.iloc[:] = np.array([1 if x in change_word else 0 for x in Y])
     return [X,Y]
 
-def simulation(coln):
-    # 講義のような確率ヒートマップを書くためのシミュレーションデータ
-    # 教育年数 0-20
-	# 毎週仕事時間 0 - 40
-	# 教育年数 -> 1 , 毎週仕事時間 -> 4 (列番号)
-	simdata = np.zeros((600,coln))
-	count = 0
-	for edu in range(20):
-		for work in range(30):
-			simdata[count, 1] = edu
-			simdata[count, 4] = work
-			count += 1
-	return simdata
-
 def transition(data, column_name):
     """
     For exaple: column_name に"結婚状態"といれると"結婚状態"の列番と列名のリストを返す関数
@@ -102,48 +93,59 @@ def transition(data, column_name):
     labels = data.iloc[:, col_num].columns
     return col_num, labels
 
-def simulation_dummy(data_num,dummy_1,col_order_num=None,_range=None,dummy_2=None):
+def simulate_dummy(coln, col_number, col_val, dummy):  # edu(0~20)とmarriageの関係、 workとmarriageの関係
     """
-    もし、ダミー変数と数値データでsimulationデータを生成したい場合、'col_order_num'と'_range'は必須
-    Parameter
-    :data_num: データの総数
-    :dummy_1: カテゴリ変数1
-    :col_order_num : データの列番号
-    :_range: column's range
-    :dummy_2: カテゴリ変数2
+    :coln:
+    :col:
+    :col_val:
+    :dummy: ダミー変数の列のリスト
     """
+    simdata = np.zeros((col_val * len(dummy), coln))  # col には edu, work の列番号、col_valには範囲(ex,edu=0~20)
     count = 0
-    length_dummy1 = len(dummy_1)
-    #dummy変数と数値でのsimdataの生成
-    if dummy_2 == None:
-        print("dummy変数と数値データでのsimulation dataを生成します")
-        if col_order_num == None or _range == None:
-            print("col_order_numもしくは_rangeがNoneです")
-            print("col_order_numもしくは_rangeを設定してください")
-        else:
-            simdata = np.zeros((_range * length_dummy1, data_num))
-            for i in range(_range):
-                for j in range(length_dummy1):
-                    simdata[count, col_order_num] = i
-                    simdata[count, dummy_1[j]] = 1
-                    count += 1
-            return simdata
-    #dummy変数とdummy変数でsimdataの生成
-    else:
-        print("dummy変数とdummy変数でsimulation dataを生成します")
-        simdata = np.zeros((length_dummy1 * len(dummy_2), data_num))
-        for i in range(length_dummy1):
-            for j in range(len(dummy_2)):
-                simdata[count, dummy_1[i]] = 1
-                simdata[count, dummy_2[j]] = 1
-                count += 1
-        return simdata
+    for i in range(col_val):
+        for j in range(len(dummy)):
+            simdata[count, col_number] = i
+            simdata[count, dummy[j]] = 1
+            count += 1
+    return simdata
+
+def simulate_dummy_and_dummy(coln, dummy_1, dummy_2):  # marriageとdegreeの関係
+    """
+    :coln :　
+    :dummy_1 :1つ目のダミー変数の列番号のリスト
+    :dummy_2 :2つ目のダミー変数の列番号のリスト
+    """
+    simdata = np.zeros((len(dummy_1) * len(dummy_2), coln))
+    count = 0
+    for i in range(len(dummy_1)):
+        for j in range(len(dummy_2)):
+            simdata[count, dummy_1[i]] = 1
+            simdata[count, dummy_2[j]] = 1
+            count += 1
+    return simdata
+
+def make_heatmap(data,result_model,column,simdata,title,xlabel,ylabel,number_of_simdata):
+    column_num_list,labels = transition(data,column)
+    heatmap(simdata)
+    plt.show()
+
+    sim_pred =result_model.predict_proba(simdata)
+    sim_pred = np.array(sim_pred[:,1].reshape(number_of_simdata,len(column_num_list)))
+
+    ax =heatmap(sim_pred,xticklabels=labels)
+    ax.invert_yaxis()
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    plt.show()
 
 def main():
     #　１．データを見る
     train = pd.read_csv("adult.csv")
     test = pd.read_csv("adult_test.csv")
     data = pd.concat([train,test],ignore_index=True)
+    #simple_bar(data,"income")
+    #simple_bar(data,"職種")
     #  2.欠損値を抜く
     convert_cols = ["職種","学位","結婚状態","関係","職業","人種","性別","国籍"]
     drop_variables = ["fnlwgt", "income"]
@@ -151,17 +153,19 @@ def main():
     change_word = " >50K."
 
     data = omitNA(data)
+
     data = convert_to_dummy(data,convert_cols)
 
     #  3.カテゴリデータの処理 && 訓練、テストデータの準備
 
-    Trx,Tx,Try,Ty = preprocessing(data,drop_variables,dependent_variable,change_word,True,0.95,True,3,5,False)
+    Trx,Tx,Try,Ty = preprocessing(data,drop_variables,dependent_variable,change_word,True,0.86,True,2,1,False)
 
     #  4.提案モデル  #<- logistic? neural network?
-    logistic = LogisticRegression()
+
+    logistic = LogisticRegression(penalty='elasticnet',solver='saga',l1_ratio=0.8)
     result = logistic.fit(Trx, Try)
-    #NNT = MLPClassifier(hidden_layer_sizes=(400,200,100,50,1))
-    #result = NNT.fit(Trx,Try)
+    #SVM = SVC(C=100,probability=True,random_state=1)
+    #result = SVM.fit(Trx,Try)
 
     pred = result.predict(Tx)
     cmat = confusion_matrix(Ty, pred)
@@ -178,21 +182,15 @@ def main():
     print("Scores:\n",scores)
 
     ## 6.シミュレーションデータでヒートマップ
-    col_num_list,labels = transition(Trx,"職種")
-    simdata = simulation_dummy(Trx.shape[1],col_num_list,1,20)
-    heatmap(simdata)
-    plt.show()
-    #print("\n\nSimulation data\n",simdata[:,[1,4]])
+    profession,profession_labels = transition(Trx,"関係")
 
-    sim_pred =result.predict_proba(simdata)
+    simdata_1 = simulate_dummy(Trx.shape[1],4,30,profession)
+    make_heatmap(Trx,result,"関係",simdata_1,title="Probability of income >=50K",xlabel="Profession",ylabel="Working per week",number_of_simdata=30)
+    simdata_2 = simulate_dummy(Trx.shape[1],1,20,profession)
+    make_heatmap(Trx,result,"関係",simdata_2,title="Probability of income >=50K",xlabel="Profession",ylabel="Education year",number_of_simdata=20)
+
+    #print("\n\nSimulation data\n",simdata[:,[1,profession[0]]])
     #print(sim_pred[:,1])
-    sim_pred = np.array(sim_pred[:,1])
-    ax =heatmap(sim_pred)
-    ax.invert_yaxis()
-    ax.set_title("Probability of income >=50K")
-    ax.set_ylabel("Education year")
-    ax.set_xlabel("Working Hour per week")
-    plt.show()
 
 if __name__ == "__main__":
     main()
